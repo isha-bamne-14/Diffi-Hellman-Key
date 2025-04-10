@@ -120,7 +120,7 @@ def upload_file():
                 file.save(filepath)
                 return post_upload_redirect()
             except Exception as e:
-                return f'Error saving file: {str(e)}', 500
+                return 'Error saving file: {}'.format(str(e)), 500
                 
         return 'Invalid file type', 400
     
