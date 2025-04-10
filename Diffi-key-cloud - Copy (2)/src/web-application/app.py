@@ -72,15 +72,20 @@ def download_file(filename):
 # Build public key directory
 @app.route('/public-key-directory/')
 def downloads_pk():
-	username = []
-	if(os.path.isfile("./media/database/database_1.pickle")):
-		pickleObj = open("./media/database/database_1.pickle","rb")
-		username = pickle.load(pickleObj)
-		pickleObj.close()
-	if len(username) == 0:
-		return render_template('public-key-list.html',msg='Aww snap! No public key found in the database')
-	else:
-		return render_template('public-key-list.html',msg='',itr = 0, length = len(username),directory=username)
+    try:
+        if os.path.isfile("./media/database/database_1.pickle"):
+            with open("./media/database/database_1.pickle","rb") as f:
+                username = pickle.load(f)
+                if username:
+                    return render_template('public-key-list.html',
+                                       msg='',
+                                       itr=0,
+                                       length=len(username),
+                                       directory=username)
+        return render_template('public-key-list.html',
+                           msg='Aww snap! No public key found in the database')
+    except Exception as e:
+        return "Error: %s" % str(e)
 
 # Build file directory
 @app.route('/file-directory/')
