@@ -8,14 +8,16 @@ import random
 
 UPLOAD_FOLDER = './media/text-files/'
 UPLOAD_KEY = './media/public-keys/'
-ALLOWED_EXTENSIONS = set(['txt'])
+ALLOWED_EXTENSIONS = set(['txt', 'jpg', 'png', 'pdf'])
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def allowed_file(filename):
-	return '.' in filename and \
-		filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in ALLOWED_EXTENSIONS
 
 '''
 -----------------------------------------------------------
@@ -94,35 +96,36 @@ def download_f():
 				UPLOAD ENCRYPTED FILE
 -----------------------------------------------------------
 '''
-
+# Update your upload_file route
 @app.route('/data', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
-        # Check if the post request has the file part
+        # Check if file exists in request
         if 'file' not in request.files:
-            return 'No file part', 400
-        
+            return 'No file part in request', 400
+            
         file = request.files['file']
         
-        # If user doesn't select file
+        # Check if file was selected
         if file.filename == '':
-            return 'No selected file', 400
-            
-        if file and allowed_file(file.filename):
-            # Ensure upload folder exists
-            if not os.path.exists(app.config['UPLOAD_FOLDER']):
-                os.makedirs(app.config['UPLOAD_FOLDER'])
-            
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            
-            try:
-                file.save(filepath)
-                return post_upload_redirect()
-            except Exception as e:
-                return 'Error saving file: {}'.format(str(e)), 500
-                
-        return 'Invalid file type', 400
+            return 'No file selected', 400
+        
+        # Check file extension
+        if not allowed_file(file.filename):
+            return 'Invalid file type. Only .txt files are allowed', 400
+        
+        # Ensure upload directory exists
+        upload_folder = app.config['UPLOAD_FOLDER']
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+        
+        # Secure the filename and save
+        filename = secure_filename(file.filename)
+        try:
+            file.save(os.path.join(upload_folder, filename))
+            return post_upload_redirect()
+        except Exception as e:
+            return 'Error saving file: %s' % str(e), 500
     
     return redirect(url_for('call_page_upload'))
 
