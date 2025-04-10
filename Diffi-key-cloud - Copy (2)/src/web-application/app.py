@@ -144,56 +144,50 @@ REGISTER UNIQUE USERNAME AND GENERATE PUBLIC KEY WITH FILE
 '''
 @app.route('/register-new-user', methods=['GET', 'POST'])
 def register_user():
-    files = []
+    # Load databases
     privatekeylist = []
     usernamelist = []
+    try:
+        with open("./media/database/database.pickle", "rb") as f:
+            privatekeylist = pickle.load(f)
+    except (IOError, pickle.UnpicklingError):
+        privatekeylist = []
     
-    # Load existing databases
-    if os.path.isfile("./media/database/database.pickle"):
-        with open("./media/database/database.pickle", "rb") as pickleObj:
-            privatekeylist = pickle.load(pickleObj)
-    if os.path.isfile("./media/database/database_1.pickle"):
-        with open("./media/database/database_1.pickle", "rb") as pickleObj:
-            usernamelist = pickle.load(pickleObj)
-    
-    # Check for existing username
-    if request.form['username'] in usernamelist:
-        return render_template('register.html', name='Username already exists')
-    
-    # Get user details
+    try:
+        with open("./media/database/database_1.pickle", "rb") as f:
+            usernamelist = pickle.load(f)
+    except (IOError, pickle.UnpicklingError):
+        usernamelist = []
+
+    # Validate
     username = request.form['username']
-    firstname = request.form['first-name']
-    secondname = request.form['last-name']
-    
-    # Generate private key
-    pin = random.randint(1, 128) % 64
-    privatekey = DH.generate_private_key(pin)
-    while privatekey in privatekeylist:
-        privatekey = DH.generate_private_key(pin)
-    
+    if username in usernamelist:
+        return render_template('register.html', name='Username already exists')
+
+    # Generate keys
+    privatekey = DH.generate_private_key(random.randint(1, 128) % 64)
+    while str(privatekey) in privatekeylist:
+        privatekey = DH.generate_private_key(random.randint(1, 128) % 64)
+
     # Update databases
     privatekeylist.append(str(privatekey))
     usernamelist.append(username)
-    
-    # Save databases
-    with open("./media/database/database.pickle", "wb") as pickleObj:
-        pickle.dump(privatekeylist, pickleObj)
-    with open("./media/database/database_1.pickle", "wb") as pickleObj:
-        pickle.dump(usernamelist, pickleObj)
-    
-    # Create public key directory if it doesn't exist
+    with open("./media/database/database.pickle", "wb") as f:
+        pickle.dump(privatekeylist, f, protocol=2)  # protocol=2 for Py2 compatibility
+    with open("./media/database/database_1.pickle", "wb") as f:
+        pickle.dump(usernamelist, f, protocol=2)
+
+    # Save public key
     if not os.path.exists(UPLOAD_KEY):
         os.makedirs(UPLOAD_KEY)
-    
-    # Generate public key filename
     filename = os.path.join(UPLOAD_KEY, 
-                      f"{username}-{secondname.upper()}{firstname.lower()}-PublicKey.pem")
-    
-    # Save public key
-    publickey = DH.generate_public_key(privatekey)
-    with open(filename, "w") as fileObject:
-        fileObject.write(str(publickey))
-    
+                          "{}-{}{}-PublicKey.pem".format(
+                              username,
+                              request.form['last-name'].upper(),
+                              request.form['first-name'].lower()))
+    with open(filename, "w") as f:
+        f.write(str(DH.generate_public_key(privatekey)))
+
     return render_template('key-display.html', privatekey=str(privatekey))
 
 
