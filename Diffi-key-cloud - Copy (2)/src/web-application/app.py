@@ -97,22 +97,34 @@ def download_f():
 
 @app.route('/data', methods=['GET', 'POST'])
 def upload_file():
-	if request.method == 'POST':
-		# check if the post request has the file part
-		if 'file' not in request.files:
-			flash('No file part')
-			return redirect(request.url)
-		file = request.files['file']
-		# if user does not select file, browser also
-		# submit a empty part without filename
-		if file.filename == '':
-			flash('No selected file')
-			return 'NO FILE SELECTED'
-		if file:
-			filename = secure_filename(file.filename)
-			file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
-			return post_upload_redirect()
-		return 'Invalid File Format !'
+    if request.method == 'POST':
+        # Check if the post request has the file part
+        if 'file' not in request.files:
+            return 'No file part', 400
+        
+        file = request.files['file']
+        
+        # If user doesn't select file
+        if file.filename == '':
+            return 'No selected file', 400
+            
+        if file and allowed_file(file.filename):
+            # Ensure upload folder exists
+            if not os.path.exists(app.config['UPLOAD_FOLDER']):
+                os.makedirs(app.config['UPLOAD_FOLDER'])
+            
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            try:
+                file.save(filepath)
+                return post_upload_redirect()
+            except Exception as e:
+                return f'Error saving file: {str(e)}', 500
+                
+        return 'Invalid file type', 400
+    
+    return redirect(url_for('call_page_upload'))
 
 '''
 -----------------------------------------------------------
